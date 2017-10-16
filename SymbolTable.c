@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-Symbol* makeSymbol(char* name)
+Symbol* makeSymbol(char* name, int type)
 {
   Symbol* symbol = (Symbol*)malloc(sizeof(Symbol));
   symbol->name = name;
-  symbol->type = UNKOWN_TYPE;
+  symbol->type = type;
   symbol->size = 1;
   symbol->addr = 0;
 
@@ -69,20 +69,35 @@ void cleanSymbolTable(SymbolTable* table)
 
 }
 
-void addSymbol(SymbolTable* table, Symbol* symbol)
+int addSymbol(SymbolTable* table, Symbol* symbol)
 {
+  Symbol* p = getSymbol(table, symbol->name);
+  if(p)
+  {
+    return 1;
+
+  }
+
   symbol->addr = table->nextAddr;
   table->nextAddr += symbol->size;
   push_back(&table->symbols, (void*)symbol);
+
+  return 0;
 
 }
 
 Symbol* getSymbol(SymbolTable* table, char* name)
 {
+  if(table->symbols.size == 0)
+  {
+    return NULL;
+
+  }
+
   for(Node* it = table->symbols.root; it; it = it->next)
   {
     Symbol* symbol = (Symbol*)it->data;
-    if(strcmp(symbol->name, name))
+    if(strcmp(symbol->name, name) == 0)
     {
       return symbol;
 

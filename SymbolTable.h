@@ -16,7 +16,7 @@ typedef struct Symbol
 
 } Symbol;
 
-Symbol* makeSymbol(char* name);
+Symbol* makeSymbol(char* name, int type);
 
 void cleanSymbol(Symbol* symbol);
 
@@ -33,7 +33,8 @@ SymbolTable makeSymbolTable();
 
 void cleanSymbolTable(SymbolTable* table);
 
-void addSymbol(SymbolTable* table, Symbol* symbol);
+// returns 0 if the symbol exists (you should free the symbol and error).
+int addSymbol(SymbolTable* table, Symbol* symbol);
 
 Symbol* getSymbol(SymbolTable* table, char* name);
 

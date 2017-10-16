@@ -1,17 +1,23 @@
 %{
 
 #include <stdio.h>
+#include "Errors.h"
 
 int yylex();
-int yyerror();
-
-#define DEBUG 1
 
 %}
 
 %code requires
 {
   #include "SymbolTable.h"
+
+  extern SymbolTable table;
+  extern int symbolType;
+
+  extern char* yytext;
+  extern int yylineno;
+  extern char linebuf[1024];
+
 }
 
 %union
@@ -20,7 +26,6 @@ int yyerror();
   int d;
   float f;
   Symbol* symbol;
-  SymbolTable table;
 
 }
 
@@ -83,89 +88,54 @@ int yyerror();
 %token NL
 %token UNKOWN
 
-%type <table> data;
-%type <table> data_list
-%type <table> data_item
-%type <table> var_decl_list
 %type <symbol> var_decl
 
 %%
 
-prog          : MAIN SEMI data[table] algorithm END MAIN SEMI
-                {
-                  printTitledSymbolTable("Symbol Table", &$table);
-                  cleanSymbolTable(&$table);
-
-                }
+prog          : MAIN SEMI data algorithm END MAIN SEMI
               ;
 
 //data section grammar
-data          : DATA COLON data_list[table]
-                {
-                  $$ = $table;
-
-
-                }
+data          : DATA COLON data_list
               | DATA COLON
-                {
-                  $$ = makeSymbolTable();
-
-
-                }
               ;
 
-data_list     : data_item[table] SEMI data_list[other]
-                {
-                  combineSymbolTables(&$table, &$other);
-                  $$ = $table;
-
-                }
-              | data_item[table] SEMI
-                {
-                  $$ = $table;
-
-                }
+data_list     : data_item SEMI data_list
+              | data_item SEMI
               ;
 
-data_item     : INT COLON var_decl_list[table]
-                {
-                  setTypeOfSymbols(&$table, INT_TYPE);
-                  $$ = $table;
-
-                }
-              | REAL COLON var_decl_list[table]
-                {
-                  setTypeOfSymbols(&$table, REAL_TYPE);
-                  $$ = $table;
-
-                }
+data_item     : INT { symbolType = INT_TYPE; } COLON var_decl_list
+              | REAL { symbolType = REAL_TYPE; } COLON var_decl_list
               ;
 
-var_decl_list : var_decl[symbol] COMMA var_decl_list[table]
-                {
-                  SymbolTable newTable = makeSymbolTable();
-                  addSymbol(&newTable, $symbol);
-                  combineSymbolTables(&newTable, &$table);
-                  $$ = newTable;
-
-                }
-              | var_decl[symbol]
-                {
-                  $$ = makeSymbolTable();
-                  addSymbol(&$$, $symbol);
-
-                }
+var_decl_list : var_decl COMMA var_decl_list
+              | var_decl
               ;
 
 var_decl      : VARIABLE[name]
                 {
-                  $$ = makeSymbol($name);
+                  Symbol* symbol = makeSymbol($name, symbolType);
+                  if(addSymbol(&table, symbol))
+                  {
+                    errorRedefinition(symbol->name);
+                    cleanSymbol(symbol);
+                    YYERROR;
+
+                  }
 
                 }
               | VARIABLE[name] LBRACKET INTLIT[size] RBRACKET
                 {
-                  $$ = makeSymbol($name);
-                  $$->size = $size;
+                  Symbol* symbol = makeSymbol($name, symbolType);
+                  symbol->size = $size;
+                  if(addSymbol(&table, symbol))
+                  {
+                    errorRedefinition(symbol->name);
+                    cleanSymbol(symbol);
+                    YYERROR;
+
+                  }
+
 
                 }
               ;
@@ -270,9 +240,4 @@ exit          : EXIT
 
 %%
 
-int yyerror()
-{
-  printf("yyerror()\n");
-  return 0;
-
-}
+int symbolType = UNKOWN_TYPE;

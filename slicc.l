@@ -9,6 +9,8 @@
 #define PRINT_TOKEN_IF(x, y) if(DEBUG > y) printf(#x ": '%s'\n", yytext);
 #define PRINT_TOKEN(x) PRINT_TOKEN_IF(x, 1)
 
+char linebuf[1024];
+
 %}
 
 %%
@@ -75,7 +77,12 @@
                                       }
 
 [ \t]+                                { PRINT_TOKEN(BLANK); }
-[\n\r]                                { PRINT_TOKEN(NL); }
+(\n|\r).*                             {
+                                        strncpy(linebuf, yytext+1, sizeof(linebuf));
+                                        yylineno++;
+                                        yyless(1);
+                                        PRINT_TOKEN(NL);
+                                      }
 .                                     { RET_TOKEN(UNKOWN); }
 
 %%
