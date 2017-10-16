@@ -16,7 +16,6 @@ int main(int argc, char** argv)
     printf("parsing succeeded\n\n");
 
     printTitledSymbolTable("Symbol Table", &table);
-    cleanSymbolTable(&table);
 
   }
   else
@@ -24,6 +23,8 @@ int main(int argc, char** argv)
     printf("parsing failed: %d\n", code);
 
   }
+
+  cleanSymbolTable(&table);
 
   return 0;
 
