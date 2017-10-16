@@ -58,7 +58,7 @@ Node* insertNode(Node* root, Node* n, int index)
     prev = cur;
     cur = cur->next;
 
-  } while(cur && cur->next && current != index);
+  } while(cur && current != index);
 
   if(prev)
   {

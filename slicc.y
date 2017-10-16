@@ -141,10 +141,12 @@ data_item     : INT COLON var_decl_list[table]
                 }
               ;
 
-var_decl_list : var_decl_list[table] COMMA var_decl[symbol]
+var_decl_list : var_decl[symbol] COMMA var_decl_list[table]
                 {
-                  addSymbol(&$table, $symbol);
-                  $$ = $table;
+                  SymbolTable newTable = makeSymbolTable();
+                  addSymbol(&newTable, $symbol);
+                  combineSymbolTables(&newTable, &$table);
+                  $$ = newTable;
 
                 }
               | var_decl[symbol]

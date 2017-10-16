@@ -76,6 +76,6 @@
 
 [ \t]+                                { PRINT_TOKEN(BLANK); }
 [\n\r]                                { PRINT_TOKEN(NL); }
-.                                     { PRINT_TOKEN_IF(UNKOWN, 0); }
+.                                     { RET_TOKEN(UNKOWN); }
 
 %%
