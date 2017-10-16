@@ -226,8 +226,13 @@ void setRecycler(LinkedList* list, NodeRecycler recycler)
 
 void clear(LinkedList* list)
 {
-  destroyList(list->root);
-  list->root = NULL;
+  if(list->root)
+  {
+    destroyList(list->root);
+    list->root = NULL;
+
+  }
+
   list->size = 0;
 
 }
