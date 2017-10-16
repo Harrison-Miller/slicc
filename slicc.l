@@ -1,12 +1,13 @@
 %{
 
 #include <stdio.h>
+#include <string.h>
 #include "y.tab.h"
 
-#define DEBUG 1
-#define RET_TOKEN(x) if(DEBUG) printf(#x ": %s\n", yytext); return x;
-#define PRINT_TOKEN(x) if(DEBUG) printf(#x ": %s\n", yytext);
-
+#define DEBUG 0
+#define RET_TOKEN(x) if(DEBUG) printf(#x ": '%s'\n", yytext); return x;
+#define PRINT_TOKEN_IF(x, y) if(DEBUG > y) printf(#x ": '%s'\n", yytext);
+#define PRINT_TOKEN(x) PRINT_TOKEN_IF(x, 1)
 
 %}
 
@@ -56,13 +57,25 @@
 "<"                                   { RET_TOKEN(LT); }
 "<>"                                  { RET_TOKEN(NEQ); }
 
-[1-9][0-9]*                           { RET_TOKEN(INTLIT); }
-([0-9]+\.[0-9]+([eE][+-]?[1-9][0-9]*)?|[1-9][0-9]*[eE][+-]?[1-9][0-9]*) { RET_TOKEN(REALLIT); }
-\"([^\n\r\"]|\"\")*\"                 { RET_TOKEN(STRINGLIT); }
-[a-zA-Z][a-zA-Z0-9]*                  { RET_TOKEN(VARIABLE); }
+[0-9]*                                {
+                                        yylval.d = atoi(yytext);
+                                        RET_TOKEN(INTLIT);
+                                      }
+([0-9]+\.[0-9]+([eE][+-]?[1-9][0-9]*)?|[1-9][0-9]*[eE][+-]?[1-9][0-9]*) {
+                                                                          yylval.f = atof(yytext);
+                                                                          RET_TOKEN(REALLIT);
+                                                                        }
+\"([^\n\r\"]|\"\")*\"                 {
+                                        yylval.str = strdup(yytext);
+                                        RET_TOKEN(STRINGLIT);
+                                      }
+[a-zA-Z][a-zA-Z0-9]*                  {
+                                        yylval.str = strdup(yytext);
+                                        RET_TOKEN(VARIABLE);
+                                      }
 
 [ \t]+                                { PRINT_TOKEN(BLANK); }
 [\n\r]                                { PRINT_TOKEN(NL); }
-.                                     { PRINT_TOKEN(UNKOWN); }
+.                                     { PRINT_TOKEN_IF(UNKOWN, 0); }
 
 %%

@@ -2,7 +2,27 @@
 
 #include <stdio.h>
 
+int yylex();
+int yyerror();
+
+#define DEBUG 1
+
 %}
+
+%code requires
+{
+  #include "SymbolTable.h"
+}
+
+%union
+{
+  char* str;
+  int d;
+  float f;
+  Symbol* symbol;
+  SymbolTable table;
+
+}
 
 //reserved words
 %token ALGORITHM
@@ -53,41 +73,99 @@
 %token NEQ
 
 //literals
-%token INTLIT
-%token UINTLIT
-%token REALLIT
-%token STRINGLIT
-%token VARIABLE
+%token <d> INTLIT
+%token <f> REALLIT
+%token <str> STRINGLIT
+%token <str> VARIABLE
 
 //white space
 %token BLANK
 %token NL
 %token UNKOWN
 
+%type <table> data;
+%type <table> data_list
+%type <table> data_item
+%type <table> var_decl_list
+%type <symbol> var_decl
+
 %%
 
-prog          : MAIN SEMI data algorithm END MAIN SEMI
+prog          : MAIN SEMI data[table] algorithm END MAIN SEMI
+                {
+                  printTitledSymbolTable("Symbol Table", &$table);
+                  cleanSymbolTable(&$table);
+
+                }
               ;
 
 //data section grammar
-data          : DATA COLON data_list
+data          : DATA COLON data_list[table]
+                {
+                  $$ = $table;
+
+
+                }
               | DATA COLON
+                {
+                  $$ = makeSymbolTable();
+
+
+                }
               ;
 
-data_list     : data_item data_list
-              | data_item
+data_list     : data_item[table] SEMI data_list[other]
+                {
+                  combineSymbolTables(&$table, &$other);
+                  $$ = $table;
+
+                }
+              | data_item[table] SEMI
+                {
+                  $$ = $table;
+
+                }
               ;
 
-data_item     : INT COLON var_decl_list SEMI
-              | REAL COLON var_decl_list SEMI
+data_item     : INT COLON var_decl_list[table]
+                {
+                  setTypeOfSymbols(&$table, INT_TYPE);
+                  $$ = $table;
+
+                }
+              | REAL COLON var_decl_list[table]
+                {
+                  setTypeOfSymbols(&$table, REAL_TYPE);
+                  $$ = $table;
+
+                }
               ;
 
-var_decl_list : var_decl COMMA var_decl_list
-              | var_decl
+var_decl_list : var_decl_list[table] COMMA var_decl[symbol]
+                {
+                  addSymbol(&$table, $symbol);
+                  $$ = $table;
+
+                }
+              | var_decl[symbol]
+                {
+                  $$ = makeSymbolTable();
+                  addSymbol(&$$, $symbol);
+
+                }
               ;
 
-var_decl      : VARIABLE
-              | VARIABLE LBRACKET INTLIT RBRACKET
+var_decl      : VARIABLE[name]
+                {
+                  $$ = makeSymbol($name);
+
+                }
+              | VARIABLE[name] LBRACKET INTLIT[size] RBRACKET
+                {
+                  $$ = makeSymbol($name);
+                  $$->size = $size;
+
+                }
               ;
 
 //algorithm section grammar
@@ -95,17 +173,55 @@ algorithm     : ALGORITHM COLON stmnt_list
               | ALGORITHM COLON
               ;
 
-stmnt_list    : stmnt_item COMMA stmnt_list
-              | stmnt_item
+//expressions
+expr          : comparison
               ;
 
-stmnt_item    : exit
+comparison    : comparison EQ logical
+              | comparison NEQ logical
+              | comparison LT logical
+              | comparison GT logical
+              | comparison LTE logical
+              | comparison GTE logical
+              | logical
               ;
 
-exit          : EXIT SEMI
+logical       : logical OR operators
+              | logical AND operators
+              | NOT operators
+              | operators
               ;
 
-/*
+operators     : operators ADD iterative
+              | operators SUB iterative
+              | iterative
+              ;
+
+iterative     : iterative MUL factor
+              | iterative DIV factor
+              | iterative MOD factor
+              | factor
+              ;
+
+factor        : SUB factor
+              | LPAREN expr RPAREN
+              | var_or_lit
+              ;
+
+var_or_lit    : var_ref
+              | INTLIT
+              | REALLIT
+              ;
+
+var_ref       : VARIABLE
+              | VARIABLE LBRACKET expr RBRACKET
+              ;
+
+//statements
+stmnt_list    : stmnt_item SEMI stmnt_list
+              | stmnt_item SEMI
+              ;
+
 stmnt_item    : assignment
               | print
               | read
@@ -114,94 +230,41 @@ stmnt_item    : assignment
               | while
               | exit
               ;
-*/
 
-//statements
-/*
-assignment    : var_ref ASSIGN expr SEMI
+assignment    : var_ref ASSIGN expr
+              ;
 
-//expressions
-variable    : VARIABLE
-            | VARIABLE LBRACKET exp RBRACKET
-            | VARIABLE LBRACKET variable RBRACKET
-            ;
+print         : PRINT print_list
+              ;
 
-var_or_lit  : variable
-            | INTLIT
-            | REALLIT
-            ;
+print_list    : print_item COMMA print_list
+              | print_item
+              ;
 
-exp         : binop
-            ;
+print_item    : expr
+              | STRINGLIT
+              | BANG
+              ;
 
-binop       : binop OR addsub
-            | binop AND addsub
-            | NOT binop
-            | addsub
-            ;
+read          : READ var_ref
+              ;
 
-addsub      : addsub ADD muldivmod
-            | addsub SUB muldivmod
-            | muldivmod
-            ;
+conditional   : IF expr SEMI stmnt_list END IF
+              | IF expr SEMI stmnt_list ELSE SEMI stmnt_list END IF
+              ;
 
-muldivmod   : muldivmod MUL factor
-            | muldivmod DIV factor
-            | muldivmod MOD factor
-            | factor
-            ;
+counting      : COUNTING var_ref bounds SEMI stmnt_list END COUNTING
+              ;
 
-factor      : var_or_lit
-            | LPAREN exp RPAREN
-            | SUB factor
-            ;
+bounds        : UPWARD expr TO expr
+              | DOWNWARD expr TO expr
+              ;
 
-algorithm   : ALGORITHM COLON exp_list
-            ;
+while         : WHILE expr SEMI stmnt_list END WHILE
+              ;
 
-exp_list    : assignment exp_list 
-            | print exp_list
-            | read exp_list
-            | conditional exp_list
-            | counting exp_list
-            | while exp_list
-            | EXIT SEMI exp_list
-            | /* empty 
-            ;
-
-assignment  : variable ASSIGN exp SEMI
-            ;
-
-print       : PRINT print_list SEMI
-            ;
-
-print_list  : str_or_var COMMA print_list
-            | str_or_var
-            ;
-
-str_or_var  : exp
-            | STRINGLIT
-            | BANG
-            ;
-
-read        : READ variable SEMI
-            ;
-
-conditional : IF exp SEMI exp_list END IF SEMI
-            | IF exp SEMI exp_list ELSE SEMI exp_list END IF SEMI
-            ;
-
-counting    : COUNTING variable updown exp TO exp SEMI exp_list END COUNTING SEMI
-            ;
-
-updown      : UPWARD
-            | DOWNWARD
-            ;
-
-while       : WHILE exp SEMI exp_list END WHILE SEMI
-            ;
-
-*/
+exit          : EXIT
+              ;
 
 %%
 

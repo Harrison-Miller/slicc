@@ -2,7 +2,11 @@
 
 implemented by harrison miller
 
-currently only supports debugging of scanning and parsing.
+### Features
+
+* scanning
+* parsing
+* generates basic symbol table from data section
 
 ### Requirements
 

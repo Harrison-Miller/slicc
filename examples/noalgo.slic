@@ -1,0 +1,6 @@
+Main;
+	data:
+		integer: Temp, Top, J, List[10];
+		integer: MaxLoc, Size;
+   Algorithm:
+End Main;

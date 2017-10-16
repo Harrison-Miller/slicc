@@ -14,6 +14,19 @@ Main;
 
    Algorithm:
 
+      # Enter the data.
+      Print !,"Factorial of: ";
+      Read n;
+
+      # Compute the factorial.
+      j := n;
+      fact := 1;
+      Counting j Upward 1 To n;
+         fact := fact * j;
+      End Counting;
+
+      # Display the result.
+      Print !,"Factorial of ", n, " is ", fact, ".", !, !;
 
       Exit;
 
