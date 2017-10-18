@@ -1,0 +1,10 @@
+main;
+	data:
+		integer: foo;
+	algorithm:
+    print "Input an integer: ";
+		read foo;
+		foo := 1 + (1 + foo)*(1 + foo);
+    print "1 + (1+foo)^2 = ", foo, !;
+	exit;
+end main;

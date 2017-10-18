@@ -3,6 +3,8 @@
 
 void errorRedefinition(char* name);
 
+void errorUndeclared(char* name);
+
 void yyerror(char*);
 
 #endif /*ERRORS*/

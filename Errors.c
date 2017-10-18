@@ -11,6 +11,14 @@ void errorRedefinition(char* name)
 
 }
 
+void errorUndeclared(char* name)
+{
+  char buf[255];
+  sprintf(buf, "'%s' undeclared", name);
+  yyerror(buf);
+
+}
+
 void yyerror(char* m)
 {
   printf("line %d: error: %s\n%s\n", yylineno, m, linebuf);

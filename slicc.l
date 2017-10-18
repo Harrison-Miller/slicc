@@ -68,7 +68,16 @@ char linebuf[1024];
                                                                           RET_TOKEN(REALLIT);
                                                                         }
 \"([^\n\r\"]|\"\")*\"                 {
+                                        char* nyytext = yytext;
+                                        nyytext++;
+
+                                        int len = strlen(nyytext);
+
                                         yylval.str = strdup(yytext);
+
+                                        strncpy(yylval.str, nyytext, len-1);
+                                        yylval.str[len-1] = '\0';
+
                                         RET_TOKEN(STRINGLIT);
                                       }
 [a-zA-Z][a-zA-Z0-9]*                  {
