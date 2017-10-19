@@ -19,6 +19,14 @@ void errorUndeclared(char* name)
 
 }
 
+void errorMustCountingInt(char* name)
+{
+  char buf[255];
+  sprintf(buf, "'%s' in counting must be of type integer", name);
+  yyerror(buf);
+
+}
+
 void yyerror(char* m)
 {
   printf("line %d: error: %s\n%s\n", yylineno, m, linebuf);

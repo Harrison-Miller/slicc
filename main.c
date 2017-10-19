@@ -12,25 +12,41 @@ int main(int argc, char** argv)
 
   table = makeSymbolTable();
 
-  int code = yyparse();
-  if(code == 0)
+  int ret = yyparse();
+  if(ret == 0)
   {
     //printf("parsing succeeded\n\n");
 
-    //printTitledSymbolTable("Symbol Table", &table);
+    printTitledSymbolTable("Symbol Table", &table);
+
+    resetCode();
 
     generateSymbolTable(&table);
 
     if(root)
     {
+
       generateAST(root);
+
+      FILE* f = fopen("a.gstal", "w+");
+      for(Node* it = code.root; it; it = it->next)
+      {
+        char* line = (char*)it->data;
+        fprintf(f, "%s\n", line);
+
+      }
+      fclose(f);
+
+      resetCode();
+
+      cleanAST(root);
 
     }
 
   }
   else
   {
-    printf("parsing failed: %d\n", code);
+    printf("parsing failed: %d\n", ret);
     return -1;
 
   }

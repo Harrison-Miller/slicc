@@ -9,6 +9,8 @@ typedef struct AST
 {
   int type;
 
+  struct AST* cond;
+
   struct AST* left;
   struct AST* right;
 
@@ -24,6 +26,8 @@ typedef struct AST
 
 AST* makeAST(int type);
 
+void cleanAST(AST* ast);
+
 AST* makeIntLit(int value);
 
 AST* makeRealLit(float value);
@@ -31,7 +35,5 @@ AST* makeRealLit(float value);
 AST* makeStringLit(char* str);
 
 AST* makeReference(Symbol* symbol);
-
-void cleanAST(AST* ast);
 
 #endif /*AST*/

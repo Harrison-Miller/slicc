@@ -6,6 +6,7 @@ AST* makeAST(int type)
 {
   AST* ast = malloc(sizeof(AST));
   ast->type = type;
+  ast->cond = NULL;
   ast->left = NULL;
   ast->right = NULL;
   ast->next = NULL;
@@ -14,6 +15,26 @@ AST* makeAST(int type)
   ast->symbol = NULL;
 
   return ast;
+
+}
+
+void cleanAST(AST* ast)
+{
+  if(ast)
+  {
+    cleanAST(ast->left);
+    cleanAST(ast->right);
+    cleanAST(ast->next);
+
+    if(ast->c)
+    {
+      free(ast->c);
+
+    }
+
+    free(ast);
+
+  }
 
 }
 
@@ -46,17 +67,5 @@ AST* makeReference(Symbol* symbol)
   AST* ast = makeAST(VARIABLE);
   ast->symbol = symbol;
   return ast;
-
-}
-
-void cleanAST(AST* ast)
-{
-  if(ast->c)
-  {
-    free(ast->c);
-
-  }
-
-  free(ast);
 
 }

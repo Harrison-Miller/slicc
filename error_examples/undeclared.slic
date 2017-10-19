@@ -1,0 +1,5 @@
+main;
+  data:
+  algorithm:
+    foo := 1;
+end main;

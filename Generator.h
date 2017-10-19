@@ -2,9 +2,14 @@
 #define GENERATOR_H_
 
 #include "SymbolTable.h"
+#include "LinkedList.h"
 #include "AST.h"
 
-// generate functions will go to stdout
+extern LinkedList code;
+
+// generator functions buil in the code list
+
+void resetCode();
 
 void generateSymbolTable(SymbolTable* table);
 

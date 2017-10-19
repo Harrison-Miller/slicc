@@ -1,10 +1,16 @@
 main;
-	data:
-		integer: foo;
-	algorithm:
-    print "Input an integer: ";
-		read foo;
-		foo := 1 + (1 + foo)*(1 + foo);
-    print "1 + (1+foo)^2 = ", foo, !;
-	exit;
+  data:
+    integer: x;
+    real: y;
+  algorithm:
+    read x;
+    if x < 10;
+      counting x downward x-1 to 0;
+        print "x";
+      end counting;
+      print !;
+    else;
+      print "x is to big", !;
+    end if;
+    exit;
 end main;

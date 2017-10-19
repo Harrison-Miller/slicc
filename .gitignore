@@ -2,4 +2,4 @@ slicc
 lex.yy.c
 y.tab.c
 y.tab.h
-test.gstal
+*.gstal

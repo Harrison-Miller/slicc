@@ -5,6 +5,8 @@ void errorRedefinition(char* name);
 
 void errorUndeclared(char* name);
 
+void errorMustCountingInt(char* name);
+
 void yyerror(char*);
 
 #endif /*ERRORS*/

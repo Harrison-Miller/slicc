@@ -110,6 +110,10 @@ int yylex();
 %type <ast> print_list;
 %type <ast> print_item;
 %type <ast> read;
+%type <ast> conditional;
+%type <ast> counting;
+%type <ast> bounds;
+%type <ast> while;
 %type <ast> exit;
 
 %%
@@ -167,27 +171,27 @@ algorithm     : ALGORITHM COLON stmnt_list[ast] { $$ = $ast; }
               ;
 
 //expressions
-expr          : comparison[ast] { $$ = $ast; }
+expr          : logical[ast] { $$ = $ast; }
               ;
 
-comparison    : comparison[left] EQ logical[right] { MAKE_EXPR(EQ, $$, $left, $right); }
-              | comparison[left] NEQ logical[right] { MAKE_EXPR(NEQ, $$, $left, $right); }
-              | comparison[left] LT logical[right] { MAKE_EXPR(LT, $$, $left, $right); }
-              | comparison[left] GT logical[right] { MAKE_EXPR(GT, $$, $left, $right); }
-              | comparison[left] LTE logical[right] { MAKE_EXPR(LTE, $$, $left, $right); }
-              | comparison[left] GTE logical[right] { MAKE_EXPR(GTE, $$, $left, $right); }
-              | logical[ast] { $$ = $ast; }
-              ;
-
-logical       : logical[left] OR operators[right] { MAKE_EXPR(OR, $$, $left, $right); }
-              | logical[left] AND operators[right] { MAKE_EXPR(AND, $$, $left, $right); }
-              | NOT operators[next]
+logical       : logical[left] OR comparison[right] { MAKE_EXPR(OR, $$, $left, $right); }
+              | logical[left] AND comparison[right] { MAKE_EXPR(AND, $$, $left, $right); }
+              | NOT comparison[next]
                 {
                   AST* ast = makeAST(NOT);
                   ast->next = $next;
                   $$ = ast;
 
                 }
+              | comparison[ast] { $$ = $ast; }
+              ;
+
+comparison    : comparison[left] EQ operators[right] { MAKE_EXPR(EQ, $$, $left, $right); }
+              | comparison[left] NEQ operators[right] { MAKE_EXPR(NEQ, $$, $left, $right); }
+              | comparison[left] LT operators[right] { MAKE_EXPR(LT, $$, $left, $right); }
+              | comparison[left] GT operators[right] { MAKE_EXPR(GT, $$, $left, $right); }
+              | comparison[left] LTE operators[right] { MAKE_EXPR(LTE, $$, $left, $right); }
+              | comparison[left] GTE operators[right] { MAKE_EXPR(GTE, $$, $left, $right); }
               | operators[ast] { $$ = $ast; }
               ;
 
@@ -263,9 +267,9 @@ stmnt_list    : stmnt_item[ast] SEMI stmnt_list[next]
 stmnt_item    : assignment[ast] { $$ = $ast; }
               | print[ast] { $$ = $ast; }
               | read[ast] { $$ = $ast; }
-              | conditional
-              | counting
-              | while
+              | conditional[ast] { $$ = $ast; }
+              | counting[ast] { $$ = $ast; }
+              | while[ast] { $$ = $ast; }
               | exit[ast] { $$ = $ast; }
               ;
 
@@ -311,18 +315,72 @@ read          : READ var_ref[left]
                 }
               ;
 
-conditional   : IF expr SEMI stmnt_list END IF
-              | IF expr SEMI stmnt_list ELSE SEMI stmnt_list END IF
+conditional   : IF expr[cond] SEMI stmnt_list[left] END IF
+                {
+                  AST* ast = makeAST(IF);
+                  ast->cond = $cond;
+                  ast->left = $left;
+                  $$ = ast;
+
+                }
+              | IF expr[cond] SEMI stmnt_list[left] ELSE SEMI stmnt_list[right] END IF
+                {
+                  AST* ast = makeAST(ELSE);
+                  ast->cond = $cond;
+                  ast->left = $left;
+                  ast->right = $right;
+                  $$ = ast;
+
+                }
               ;
 
-counting      : COUNTING var_ref bounds SEMI stmnt_list END COUNTING
+counting      : COUNTING var_ref[left]
+                {
+                  if($left->symbol->type == REAL_TYPE)
+                  {
+                    errorMustCountingInt($left->symbol->name);
+                    YYERROR;
+
+                  }
+
+                }
+                bounds[cond] SEMI stmnt_list[right] END COUNTING
+                {
+                  AST* ast = makeAST(COUNTING);
+                  ast->cond = $cond;
+                  ast->left = $left;
+                  ast->right = $right;
+                  $$ = ast;
+
+                }
               ;
 
-bounds        : UPWARD expr TO expr
-              | DOWNWARD expr TO expr
+bounds        : UPWARD expr[left] TO expr[right]
+                {
+                  AST* ast = makeAST(UPWARD);
+                  ast->left = $left;
+                  ast->right = $right;
+                  $$ = ast;
+
+                }
+              | DOWNWARD expr[left] TO expr[right]
+                {
+                  AST* ast = makeAST(DOWNWARD);
+                  ast->left = $left;
+                  ast->right = $right;
+                  $$ = ast;
+
+                }
               ;
 
-while         : WHILE expr SEMI stmnt_list END WHILE
+while         : WHILE expr[cond] SEMI stmnt_list[left] END WHILE
+                {
+                  AST* ast = makeAST(WHILE);
+                  ast->cond = $cond;
+                  ast->left = $left;
+                  $$ = ast;
+
+                }
               ;
 
 exit          : EXIT { $$  = makeAST(EXIT); }
