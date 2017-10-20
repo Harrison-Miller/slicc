@@ -1,11 +1,9 @@
 main;
   data:
-    integer: x[2];
+    integer: a, b;
   algorithm:
-    read x[0];
-    read x[1];
-
-    print "x[0] = ", x[0], !;
-    print "x[1] = ", x[1], !;
-
+    read a;
+    read b;
+    print a%b, !;
+    exit;
 end main;

@@ -41,8 +41,4 @@ Symbol* getSymbol(SymbolTable* table, char* name);
 void printSymbolTable(SymbolTable* table);
 void printTitledSymbolTable(char* title, SymbolTable* table);
 
-void setTypeOfSymbols(SymbolTable* table, int type);
-
-void combineSymbolTables(SymbolTable* table, SymbolTable* otherTable);
-
 #endif /*SYMBOLTABLE*/

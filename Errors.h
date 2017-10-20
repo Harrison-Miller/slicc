@@ -7,6 +7,8 @@ void errorUndeclared(char* name);
 
 void errorMustCountingInt(char* name);
 
+void errorInvalidArraySize(char* name);
+
 void yyerror(char*);
 
 #endif /*ERRORS*/

@@ -152,6 +152,13 @@ var_decl      : VARIABLE[name]
                 }
               | VARIABLE[name] LBRACKET INTLIT[size] RBRACKET
                 {
+                  if($size <= 1)
+                  {
+                    errorInvalidArraySize($name);
+                    YYERROR;
+
+                  }
+
                   Symbol* symbol = makeSymbol($name, symbolType);
                   symbol->size = $size;
                   if(addSymbol(&table, symbol))
@@ -292,9 +299,9 @@ print         : PRINT print_list[left]
                 }
               ;
 
-print_list    : print_item[ast] COMMA print_list[left]
+print_list    : print_item[ast] COMMA print_list[next]
                 {
-                  $ast->left = $left;
+                  $ast->next = $next;
                   $$ = $ast;
 
                 }

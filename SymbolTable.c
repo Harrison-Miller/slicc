@@ -136,28 +136,3 @@ void printTitledSymbolTable(char* title, SymbolTable* table)
   printSymbolTable(table);
 
 }
-
-void setTypeOfSymbols(SymbolTable* table, int type)
-{
-  for(Node* it = table->symbols.root; it; it = it->next)
-  {
-    Symbol* symbol = (Symbol*)it->data;
-    symbol->type = type;
-
-  }
-
-}
-
-void combineSymbolTables(SymbolTable* table, SymbolTable* otherTable)
-{
-  for(Node* it = otherTable->symbols.root; it; it = it->next)
-  {
-    Symbol* symbol = (Symbol*)it->data;
-    addSymbol(table, symbol);
-
-  }
-
-  setRecycler(&otherTable->symbols, NULL);
-  cleanSymbolTable(otherTable);
-
-}

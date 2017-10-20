@@ -119,6 +119,11 @@ int generateExpression(AST* ast)
     return type;
 
   }
+  else if(ast->type == MOD)
+  {
+    return generateMod(ast);
+
+  }
   else
   {
     int leftType = generateExpression(ast->left);
@@ -147,6 +152,49 @@ int generateExpression(AST* ast)
   }
 
   return UNKOWN;
+
+}
+
+int generateMod(AST* ast)
+{
+  Symbol* dividend = getSymbol(&table, "_dividend");
+  Symbol* divisor = getSymbol(&table, "_divisor");
+
+  ADD_SCODE("NOP ; start mod");
+  int leftType = generateExpression(ast->left);
+  if(leftType == REALLIT)
+  {
+    ADD_SCODE("FTI");
+
+  }
+  ADD_CODE("LAA %d", dividend->addr);
+  ADD_SCODE("STM");
+  ADD_SCODE("LOD");
+
+  ADD_CODE("LAA %d", dividend->addr);
+  ADD_SCODE("LOD");
+
+  int rightType = generateExpression(ast->right);
+  if(rightType == REALLIT)
+  {
+    ADD_SCODE("FTI");
+
+  }
+  ADD_CODE("LAA %d", divisor->addr);
+  ADD_SCODE("STM");
+  ADD_SCODE("LOD");
+
+  ADD_SCODE("DVI"); // a/n
+
+  ADD_CODE("LAA %d", divisor->addr);
+  ADD_SCODE("LOD");
+
+  ADD_SCODE("MLI"); // n * (a/n)
+
+  ADD_SCODE("SBI"); // a - (n* (a/n))
+  ADD_SCODE("NOP ; end mod");
+
+  return INTLIT;
 
 }
 
@@ -327,7 +375,7 @@ void generatePrintList(AST* ast)
       ADD_SCODE("PTL");
 
     }
-    else if(ast->type == VARIABLE)
+    else if(ast->type)
     {
       int type = generateExpression(ast);
       if(type == INTLIT)
@@ -343,7 +391,7 @@ void generatePrintList(AST* ast)
 
     }
 
-    ast = ast->left;
+    ast = ast->next;
 
   } while(ast);
 

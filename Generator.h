@@ -22,6 +22,8 @@ void endFlowControl(AST* ast);
 int generateVarRef(AST* ast);
 int generateExpression(AST* ast);
 
+int generateMod(AST* ast);
+
 void generateStatement(AST* ast);
 
 void generatePrintList(AST* ast);

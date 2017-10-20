@@ -27,6 +27,14 @@ void errorMustCountingInt(char* name)
 
 }
 
+void errorInvalidArraySize(char* name)
+{
+  char buf[255];
+  sprintf(buf, "size of array '%s' is invalid", name);
+  yyerror(buf);
+
+}
+
 void yyerror(char* m)
 {
   printf("line %d: error: %s\n%s\n", yylineno, m, linebuf);

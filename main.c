@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <string.h>
 #include "y.tab.h"
 #include "LinkedList.h"
+#include "SymbolTable.h"
 #include "Generator.h"
 
 SymbolTable table;
@@ -11,6 +13,9 @@ int main(int argc, char** argv)
   //testList();
 
   table = makeSymbolTable();
+
+  addSymbol(&table, makeSymbol(strdup("_dividend"), INT_TYPE));
+  addSymbol(&table, makeSymbol(strdup("_divisor"), INT_TYPE));
 
   int ret = yyparse();
   if(ret == 0)
