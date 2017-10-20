@@ -15,8 +15,11 @@ void generateSymbolTable(SymbolTable* table);
 
 void generateAST(AST* ast);
 
+void endFlowControl(AST* ast);
+
 // returns INTLIT or REALLIT
 // returns UNKOWN if there was no expression
+int generateVarRef(AST* ast);
 int generateExpression(AST* ast);
 
 void generateStatement(AST* ast);

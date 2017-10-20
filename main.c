@@ -21,11 +21,10 @@ int main(int argc, char** argv)
 
     resetCode();
 
-    generateSymbolTable(&table);
-
     if(root)
     {
 
+      generateSymbolTable(&table);
       generateAST(root);
 
       FILE* f = fopen("a.gstal", "w+");

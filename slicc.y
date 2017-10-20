@@ -176,10 +176,10 @@ expr          : logical[ast] { $$ = $ast; }
 
 logical       : logical[left] OR comparison[right] { MAKE_EXPR(OR, $$, $left, $right); }
               | logical[left] AND comparison[right] { MAKE_EXPR(AND, $$, $left, $right); }
-              | NOT comparison[next]
+              | NOT comparison[cond]
                 {
                   AST* ast = makeAST(NOT);
-                  ast->next = $next;
+                  ast->cond = $cond;
                   $$ = ast;
 
                 }
@@ -206,10 +206,10 @@ iterative     : iterative[left] MUL factor[right] { MAKE_EXPR(MUL, $$, $left, $r
               | factor[ast] { $$ = $ast; }
               ;
 
-factor        : SUB factor[next]
+factor        : SUB factor[cond]
                 {
                   AST* ast = makeAST(SUB);
-                  ast->next = $next;
+                  ast->cond = $cond;
                   $$ = ast;
 
                 }
@@ -236,7 +236,7 @@ var_ref       : VARIABLE[name]
                   $$ = ast;
 
                 }
-              | VARIABLE[name] LBRACKET expr[left] RBRACKET
+              | VARIABLE[name] LBRACKET expr[cond] RBRACKET
                 {
                   Symbol* symbol = getSymbol(&table, $name);
                   if(!symbol)
@@ -247,7 +247,7 @@ var_ref       : VARIABLE[name]
                   }
 
                   AST* ast = makeReference(symbol);
-                  ast->left = $left;
+                  ast->cond = $cond;
 
                   $$ = ast;
 

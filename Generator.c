@@ -48,6 +48,34 @@ void generateAST(AST* ast)
 
 }
 
+void endFlowControl(AST* ast)
+{
+  //this ensures the jump to after flowcontrol is valid.
+  if(!ast->next)
+  {
+    ADD_SCODE("HLT");
+
+  }
+
+}
+
+int generateVarRef(AST* ast)
+{
+  Symbol* symbol = ast->symbol;
+  ADD_CODE("LAA %d", symbol->addr);
+
+  //array references
+  if(symbol->size > 1)
+  {
+    generateExpression(ast->cond);
+    ADD_SCODE("ADI"); // adds address + offset
+
+  }
+
+  return symbol->type == INT_TYPE ? INTLIT : REALLIT;
+
+}
+
 int generateExpression(AST* ast)
 {
   if(ast->type == INTLIT)
@@ -64,12 +92,31 @@ int generateExpression(AST* ast)
   }
   else if(ast->type == VARIABLE)
   {
-    Symbol* symbol = ast->symbol;
-
-    ADD_CODE("LAA %d", symbol->addr);
+    int type = generateVarRef(ast);
     ADD_SCODE("LOD");
 
-    return symbol->type == INT_TYPE ? INTLIT : REALLIT;
+    return type;
+
+  }
+  else if(ast->cond)
+  {
+    int type = generateExpression(ast->cond);
+
+    if(ast->type == NOT)
+    {
+      ADD_CODE("LLI %d", 1);
+      ADD_SCODE("GEI");
+      ADD_CODE("LLI %d", 1);
+      ADD_SCODE("SBI");
+
+    }
+    else if(ast->type == SUB)
+    {
+      ADD_SCODE("NGI");
+
+    }
+
+    return type;
 
   }
   else
@@ -107,17 +154,16 @@ void generateStatement(AST* ast)
 {
   if(ast->type == ASSIGN)
   {
-    Symbol* ref = ast->left->symbol;
-    ADD_CODE("LAA %d", ref->addr);
+    int refType = generateVarRef(ast->left);
     int type = generateExpression(ast->right);
 
     // convert to the type of the variable
-    if(ref->type == INT_TYPE && type == REALLIT)
+    if(refType == INTLIT && type == REALLIT)
     {
       ADD_SCODE("FTI");
 
     }
-    else if(ref->type == REAL_TYPE && type == INTLIT)
+    else if(refType == REALLIT && type == INTLIT)
     {
       ADD_SCODE("ITF");
 
@@ -133,14 +179,11 @@ void generateStatement(AST* ast)
   }
   else if(ast->type == READ)
   {
-    Symbol* symbol = ast->left->symbol;
+    int type = generateVarRef(ast->left);
 
-    ADD_CODE("LAA %d", symbol->addr);
-
-    if(symbol->type == INT_TYPE)
+    if(type == INTLIT)
     {
       ADD_SCODE("INI");
-      ADD_SCODE("STO");
 
     }
     else
@@ -148,6 +191,8 @@ void generateStatement(AST* ast)
       ADD_SCODE("INF");
 
     }
+
+    ADD_SCODE("STO");
 
   }
   else if(ast->type == IF)
@@ -158,6 +203,8 @@ void generateStatement(AST* ast)
     generateAST(ast->left);
     ADD_SCODE("NOP ; end if");
     INSERT_CODE(pos, "JPF %d ; if", code.size + 1);
+
+    endFlowControl(ast);
 
   }
   else if(ast->type == ELSE)
@@ -173,18 +220,19 @@ void generateStatement(AST* ast)
     ADD_SCODE("NOP ; end if");
     INSERT_CODE(pos, "JMP %d", code.size + 1);
 
+    endFlowControl(ast);
+
   }
   else if(ast->type == COUNTING)
   {
     ADD_SCODE("NOP ; counting init");
-    Symbol* symbol = ast->left->symbol;
-    ADD_CODE("LAA %d", symbol->addr);
+    generateVarRef(ast->left);
     generateExpression(ast->cond->left);
     ADD_SCODE("STO");
     ADD_SCODE("NOP ; counting expression");
     int check = code.size;
 
-    ADD_CODE("LAA %d", symbol->addr);
+    generateVarRef(ast->left);
     ADD_SCODE("LOD");
 
     generateExpression(ast->cond->right);
@@ -204,8 +252,8 @@ void generateStatement(AST* ast)
     generateAST(ast->right);
 
     ADD_SCODE("NOP ; counting mutate");
-    ADD_CODE("LAA %d", symbol->addr);
-    ADD_CODE("LAA %d", symbol->addr);
+    generateVarRef(ast->left);
+    generateVarRef(ast->left);
     ADD_SCODE("LOD");
     ADD_CODE("LLI %d", 1);
 
@@ -226,6 +274,8 @@ void generateStatement(AST* ast)
     ADD_SCODE("NOP ; end counting");
     INSERT_CODE(pos, "JPF %d ; counting", code.size + 1);
 
+    endFlowControl(ast);
+
   }
   else if(ast->type == WHILE)
   {
@@ -237,6 +287,8 @@ void generateStatement(AST* ast)
     ADD_CODE("JMP %d", check);
     ADD_SCODE("NOP ; end while");
     INSERT_CODE(pos, "JPF %d ; while", code.size + 1);
+
+    endFlowControl(ast);
 
   }
   else if(ast->type == EXIT)
@@ -275,7 +327,7 @@ void generatePrintList(AST* ast)
       ADD_SCODE("PTL");
 
     }
-    else
+    else if(ast->type == VARIABLE)
     {
       int type = generateExpression(ast);
       if(type == INTLIT)
