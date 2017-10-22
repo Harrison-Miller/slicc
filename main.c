@@ -8,15 +8,54 @@
 SymbolTable table;
 AST* root;
 
+extern FILE* yyin;
+
+void printUsage(char** argv)
+{
+    printf("usage: %s [-o name] file\n", argv[0]);
+
+}
+
 int main(int argc, char** argv)
 {
   //testList();
+
+  char* fileName = "a.gstal";
+  char* sourceFile = NULL;
+
+  if(!(argc == 2 || argc == 4))
+  {
+    printUsage(argv);
+    return -1;
+
+  }
+
+  if(strcmp(argv[1], "-o") == 0)
+  {
+    fileName = argv[2];
+    sourceFile = argv[3];
+
+  }
+  else
+  {
+    sourceFile = argv[1];
+
+  }
+
+  FILE* in = fopen(sourceFile, "r");
+  if(!in)
+  {
+    printf("Can't open file: %s\n", argv[1]);
+    return -1;
+
+  }
 
   table = makeSymbolTable();
 
   addSymbol(&table, makeSymbol(strdup("_dividend"), INT_TYPE));
   addSymbol(&table, makeSymbol(strdup("_divisor"), INT_TYPE));
 
+  yyin = in;
   int ret = yyparse();
   if(ret == 0)
   {
@@ -32,14 +71,14 @@ int main(int argc, char** argv)
       generateSymbolTable(&table);
       generateAST(root);
 
-      FILE* f = fopen("a.gstal", "w+");
+      FILE* out = fopen(fileName, "w+");
       for(Node* it = code.root; it; it = it->next)
       {
         char* line = (char*)it->data;
-        fprintf(f, "%s\n", line);
+        fprintf(out, "%s\n", line);
 
       }
-      fclose(f);
+      fclose(out);
 
       resetCode();
 
