@@ -1,9 +1,15 @@
 main;
   data:
-    integer: a, b;
+    integer: i;
   algorithm:
-    read a;
-    read b;
-    print a%b, !;
-    exit;
+    if 1 > 0;
+    if 1 > 0;
+      if 1 > 0;
+        print "a";
+      else;
+        print "b";
+      end if;
+    end if;
+    end if;
+  exit;
 end main;

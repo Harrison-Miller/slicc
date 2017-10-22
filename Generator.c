@@ -9,6 +9,9 @@ LinkedList code;
 #define ADD_CODE(x, ...) { char* str = malloc(sizeof(char)*50); sprintf(str, x, __VA_ARGS__); push_back(&code, str); }
 #define ADD_SCODE(x) { char* str = malloc(sizeof(char)*50); sprintf(str, x); push_back(&code, str); }
 #define INSERT_CODE(i, x, ...) { char* str = malloc(sizeof(char)*50); sprintf(str, x, __VA_ARGS__); insert(&code, str, i); }
+#define INSERT_SCODE(i, x) { char* str = malloc(sizeof(char)*50); sprintf(str, x); insert(&code, str, i); }
+
+int depth = 0;
 
 void cleanCharNode(void* c)
 {
@@ -24,6 +27,7 @@ void resetCode()
 {
   clear(&code);
   code = makeList(&cleanCharNode);
+  depth = 0;
 
 }
 
@@ -39,35 +43,31 @@ void generateSymbolTable(SymbolTable* table)
 
 void generateAST(AST* ast)
 {
+  depth++;
   do
   {
     generateStatement(ast);
     ast = ast->next;
 
   } while(ast);
-
-}
-
-void endFlowControl(AST* ast)
-{
-  //this ensures the jump to after flowcontrol is valid.
-  if(!ast->next)
-  {
-    ADD_SCODE("HLT");
-
-  }
+  depth--;
 
 }
 
 int generateVarRef(AST* ast)
 {
   Symbol* symbol = ast->symbol;
-  ADD_CODE("LAA %d", symbol->addr);
+  ADD_CODE("LAA %d ; %s", symbol->addr, symbol->name);
 
   //array references
   if(symbol->size > 1)
   {
-    generateExpression(ast->cond);
+    int type = generateExpression(ast->cond);
+    if(type == REALLIT)
+    {
+      ADD_SCODE("FTI");
+
+    }
     ADD_SCODE("ADI"); // adds address + offset
 
   }
@@ -104,15 +104,36 @@ int generateExpression(AST* ast)
 
     if(ast->type == NOT)
     {
-      ADD_CODE("LLI %d", 1);
-      ADD_SCODE("GEI");
-      ADD_CODE("LLI %d", 1);
-      ADD_SCODE("SBI");
+      if(type == INTLIT)
+      {
+        ADD_CODE("LLI %d", 1);
+        ADD_SCODE("GEI");
+        ADD_CODE("LLI %d", 1);
+        ADD_SCODE("SBI");
+
+      }
+      else
+      {
+        ADD_CODE("LLF %f", 1.0f);
+        ADD_SCODE("GEF");
+        ADD_CODE("LLF %f", 1.0f);
+        ADD_SCODE("SBF");
+
+      }
 
     }
     else if(ast->type == SUB)
     {
-      ADD_SCODE("NGI");
+      if(type == INTLIT)
+      {
+        ADD_SCODE("NGI");
+
+      }
+      else
+      {
+        ADD_SCODE("NGF");
+
+      }
 
     }
 
@@ -127,27 +148,66 @@ int generateExpression(AST* ast)
   else
   {
     int leftType = generateExpression(ast->left);
+    int leftCastPos = code.size;
     int rightType = generateExpression(ast->right);
 
-    switch(ast->type)
+    int isReal = 0;
+    if(leftType == INTLIT && rightType == REALLIT)
     {
-      case EQ:  ADD_SCODE("EQI"); break;
-      case NEQ: ADD_SCODE("NEI"); break;
-      case LT:  ADD_SCODE("LTI"); break;
-      case GT:  ADD_SCODE("GTI"); break;
-      case LTE: ADD_SCODE("LEI"); break;
-      case GTE: ADD_SCODE("GEI"); break;
-      case OR:  ADD_SCODE("ADI"); break;
-      case AND: ADD_SCODE("MLI"); break;
-      case ADD: ADD_SCODE("ADI"); break;
-      case SUB: ADD_SCODE("SBI"); break;
-      case MUL: ADD_SCODE("MLI"); break;
-      case DIV: ADD_SCODE("DVI"); break;
+      INSERT_SCODE(leftCastPos, "ITF");
+      isReal = 1;
+
+    }
+    else if(leftType == REALLIT && rightType == INTLIT)
+    {
+      ADD_SCODE("ITF");
+      isReal = 1;
 
     }
 
-    int real = leftType == REALLIT || rightType == REALLIT;
-    return real ? REALLIT : INTLIT;
+    if(isReal)
+    {
+      switch(ast->type)
+      {
+        case EQ:  ADD_SCODE("EQF"); break;
+        case NEQ: ADD_SCODE("NEF"); break;
+        case LT:  ADD_SCODE("LTF"); break;
+        case GT:  ADD_SCODE("GTF"); break;
+        case LTE: ADD_SCODE("LEF"); break;
+        case GTE: ADD_SCODE("GEF"); break;
+        case OR:  ADD_SCODE("ADF"); break;
+        case AND: ADD_SCODE("MLF"); break;
+        case ADD: ADD_SCODE("ADF"); break;
+        case SUB: ADD_SCODE("SBF"); break;
+        case MUL: ADD_SCODE("MLF"); break;
+        case DIV: ADD_SCODE("DVF"); break;
+
+      }
+
+    }
+    else
+    {
+      switch(ast->type)
+      {
+        case EQ:  ADD_SCODE("EQI"); break;
+        case NEQ: ADD_SCODE("NEI"); break;
+        case LT:  ADD_SCODE("LTI"); break;
+        case GT:  ADD_SCODE("GTI"); break;
+        case LTE: ADD_SCODE("LEI"); break;
+        case GTE: ADD_SCODE("GEI"); break;
+        case OR:  ADD_SCODE("ADI"); break;
+        case AND: ADD_SCODE("MLI"); break;
+        case ADD: ADD_SCODE("ADI"); break;
+        case SUB: ADD_SCODE("SBI"); break;
+        case MUL: ADD_SCODE("MLI"); break;
+        case DIV: ADD_SCODE("DVI"); break;
+
+      }
+
+    }
+
+
+    return isReal ? REALLIT : INTLIT;
 
   }
 
@@ -246,29 +306,37 @@ void generateStatement(AST* ast)
   else if(ast->type == IF)
   {
     ADD_SCODE("NOP ; if expression");
-    generateExpression(ast->cond);
+    int type = generateExpression(ast->cond);
+    if(type == REALLIT)
+    {
+      ADD_SCODE("FTI");
+    }
+
     int pos = code.size;
+
     generateAST(ast->left);
     ADD_SCODE("NOP ; end if");
-    INSERT_CODE(pos, "JPF %d ; if", code.size + 1);
-
-    endFlowControl(ast);
+    INSERT_CODE(pos, "JPF %d ; if", code.size + depth - 1);
 
   }
   else if(ast->type == ELSE)
   {
     ADD_SCODE("NOP ; if expression");
-    generateExpression(ast->cond);
+    int type = generateExpression(ast->cond);
+    if(type == REALLIT)
+    {
+      ADD_SCODE("FTI");
+
+    }
+
     int pos = code.size;
     generateAST(ast->left);
     ADD_SCODE("NOP ; else");
-    INSERT_CODE(pos, "JPF %d ; if", code.size + 2);
+    INSERT_CODE(pos, "JPF %d ; if", code.size + depth + 1);
     pos = code.size;
     generateAST(ast->right);
     ADD_SCODE("NOP ; end if");
-    INSERT_CODE(pos, "JMP %d", code.size + 1);
-
-    endFlowControl(ast);
+    INSERT_CODE(pos, "JMP %d", code.size + depth - 1);
 
   }
   else if(ast->type == COUNTING)
@@ -282,8 +350,15 @@ void generateStatement(AST* ast)
 
     generateVarRef(ast->left);
     ADD_SCODE("LOD");
+    int varCastPos = code.size;
 
-    generateExpression(ast->cond->right);
+    int type = generateExpression(ast->cond->right);
+
+    if(type == REALLIT)
+    {
+      ADD_SCODE("FTI");
+
+    }
 
     if(ast->cond->type == UPWARD)
     {
@@ -318,11 +393,9 @@ void generateStatement(AST* ast)
 
     ADD_SCODE("STO");
 
-    ADD_CODE("JMP %d", check);
+    ADD_CODE("JMP %d", check + depth - 2);
     ADD_SCODE("NOP ; end counting");
-    INSERT_CODE(pos, "JPF %d ; counting", code.size + 1);
-
-    endFlowControl(ast);
+    INSERT_CODE(pos, "JPF %d ; counting", code.size + depth - 1);
 
   }
   else if(ast->type == WHILE)
@@ -332,11 +405,9 @@ void generateStatement(AST* ast)
     generateExpression(ast->cond);
     int pos = code.size;
     generateAST(ast->left);
-    ADD_CODE("JMP %d", check);
+    ADD_CODE("JMP %d", check + depth - 2);
     ADD_SCODE("NOP ; end while");
-    INSERT_CODE(pos, "JPF %d ; while", code.size + 1);
-
-    endFlowControl(ast);
+    INSERT_CODE(pos, "JPF %d ; while", code.size + depth - 1);
 
   }
   else if(ast->type == EXIT)
