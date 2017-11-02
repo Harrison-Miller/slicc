@@ -164,6 +164,12 @@ int generateExpression(AST* ast)
       isReal = 1;
 
     }
+    else if(leftType == REALLIT && rightType == REALLIT)
+    {
+      // no casting necessary.
+      isReal = 1;
+
+    }
 
     if(isReal)
     {
