@@ -1,5 +1,6 @@
 #include "Errors.h"
 #include "y.tab.h"
+#include "common.h"
 #include <string.h>
 #include <stdio.h>
 

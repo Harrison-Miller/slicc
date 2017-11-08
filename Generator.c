@@ -1,5 +1,6 @@
 #include "Generator.h"
 #include "y.tab.h"
+#include "common.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

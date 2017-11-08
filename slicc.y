@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include "Errors.h"
+#include "common.h"
 
 int yylex();
 
@@ -9,28 +10,12 @@ int yylex();
 
 %}
 
-%code requires
-{
-  #include "SymbolTable.h"
-  #include "AST.h"
-
-  extern SymbolTable table;
-  extern int symbolType;
-
-  extern AST* root;
-
-  extern char* yytext;
-  extern int yylineno;
-  extern char linebuf[1024];
-
-}
-
 %union
 {
   char* str;
   int d;
   float f;
-  AST* ast;
+  struct AST* ast;
 
 }
 
@@ -118,7 +103,7 @@ int yylex();
 
 %%
 
-prog          : MAIN SEMI data algorithm[ast] END MAIN SEMI { root = $ast; }
+prog          : MAIN SEMI data algorithm END MAIN SEMI { root = $4; }
               ;
 
 //data section grammar
@@ -138,9 +123,11 @@ var_decl_list : var_decl COMMA var_decl_list
               | var_decl
               ;
 
-var_decl      : VARIABLE[name]
+var_decl      : VARIABLE
                 {
-                  Symbol* symbol = makeSymbol($name, symbolType);
+                  char* name = $1;
+
+                  Symbol* symbol = makeSymbol(name, symbolType);
                   if(addSymbol(&table, symbol))
                   {
                     errorRedefinition(symbol->name);
@@ -150,17 +137,20 @@ var_decl      : VARIABLE[name]
                   }
 
                 }
-              | VARIABLE[name] LBRACKET INTLIT[size] RBRACKET
+              | VARIABLE LBRACKET INTLIT RBRACKET
                 {
-                  if($size <= 1)
+                  char* name = $1;
+                  int size = $3;
+
+                  if(size <= 1)
                   {
-                    errorInvalidArraySize($name);
+                    errorInvalidArraySize(name);
                     YYERROR;
 
                   }
 
-                  Symbol* symbol = makeSymbol($name, symbolType);
-                  symbol->size = $size;
+                  Symbol* symbol = makeSymbol(name, symbolType);
+                  symbol->size = size;
                   if(addSymbol(&table, symbol))
                   {
                     errorRedefinition(symbol->name);
@@ -173,68 +163,72 @@ var_decl      : VARIABLE[name]
               ;
 
 //algorithm section grammar
-algorithm     : ALGORITHM COLON stmnt_list[ast] { $$ = $ast; }
+algorithm     : ALGORITHM COLON stmnt_list { $$ = $3; }
               | ALGORITHM COLON { $$ = NULL; }
               ;
 
 //expressions
-expr          : logical[ast] { $$ = $ast; }
+expr          : logical { $$ = $1; }
               ;
 
-logical       : logical[left] OR comparison[right] { MAKE_EXPR(OR, $$, $left, $right); }
-              | logical[left] AND comparison[right] { MAKE_EXPR(AND, $$, $left, $right); }
-              | NOT comparison[cond]
+logical       : logical OR comparison { MAKE_EXPR(OR, $$, $1, $3); }
+              | logical AND comparison { MAKE_EXPR(AND, $$, $1, $3); }
+              | NOT comparison
                 {
+                  AST* cond = $2;
                   AST* ast = makeAST(NOT);
-                  ast->cond = $cond;
+                  ast->cond = cond;
                   $$ = ast;
 
                 }
-              | comparison[ast] { $$ = $ast; }
+              | comparison { $$ = $1; }
               ;
 
-comparison    : comparison[left] EQ operators[right] { MAKE_EXPR(EQ, $$, $left, $right); }
-              | comparison[left] NEQ operators[right] { MAKE_EXPR(NEQ, $$, $left, $right); }
-              | comparison[left] LT operators[right] { MAKE_EXPR(LT, $$, $left, $right); }
-              | comparison[left] GT operators[right] { MAKE_EXPR(GT, $$, $left, $right); }
-              | comparison[left] LTE operators[right] { MAKE_EXPR(LTE, $$, $left, $right); }
-              | comparison[left] GTE operators[right] { MAKE_EXPR(GTE, $$, $left, $right); }
-              | operators[ast] { $$ = $ast; }
+comparison    : comparison EQ operators { MAKE_EXPR(EQ, $$, $1, $3); }
+              | comparison NEQ operators { MAKE_EXPR(NEQ, $$, $1, $3); }
+              | comparison LT operators { MAKE_EXPR(LT, $$, $1, $3); }
+              | comparison GT operators { MAKE_EXPR(GT, $$, $1, $3); }
+              | comparison LTE operators { MAKE_EXPR(LTE, $$, $1, $3); }
+              | comparison GTE operators { MAKE_EXPR(GTE, $$, $1, $3); }
+              | operators { $$ = $1; }
               ;
 
-operators     : operators[left] ADD iterative[right] { MAKE_EXPR(ADD, $$, $left, $right); }
-              | operators[left] SUB iterative[right] { MAKE_EXPR(SUB, $$, $left, $right); }
-              | iterative[ast] { $$ = $ast; }
+operators     : operators ADD iterative { MAKE_EXPR(ADD, $$, $1, $3); }
+              | operators SUB iterative { MAKE_EXPR(SUB, $$, $1, $3); }
+              | iterative { $$ = $1; }
               ;
 
-iterative     : iterative[left] MUL factor[right] { MAKE_EXPR(MUL, $$, $left, $right); }
-              | iterative[left] DIV factor[right] { MAKE_EXPR(DIV, $$, $left, $right); }
-              | iterative[left] MOD factor[right] { MAKE_EXPR(MOD, $$, $left, $right); }
-              | factor[ast] { $$ = $ast; }
+iterative     : iterative MUL factor { MAKE_EXPR(MUL, $$, $1, $3); }
+              | iterative DIV factor { MAKE_EXPR(DIV, $$, $1, $3); }
+              | iterative MOD factor { MAKE_EXPR(MOD, $$, $1, $3); }
+              | factor { $$ = $1; }
               ;
 
-factor        : SUB factor[cond]
+factor        : SUB factor
                 {
+                  AST* cond = $2;
                   AST* ast = makeAST(SUB);
-                  ast->cond = $cond;
+                  ast->cond = cond;
                   $$ = ast;
 
                 }
-              | LPAREN expr[ast] RPAREN { $$ = $ast; }
-              | var_or_lit[ast] { $$ = $ast; }
+              | LPAREN expr RPAREN { $$ = $2; }
+              | var_or_lit { $$ = $1; }
               ;
 
-var_or_lit    : var_ref[ast] { $$ = $ast; }
-              | INTLIT[value] { $$ = makeIntLit($value); }
-              | REALLIT[value] { $$ = makeRealLit($value); }
+var_or_lit    : var_ref { $$ = $1; }
+              | INTLIT { $$ = makeIntLit($1); }
+              | REALLIT { $$ = makeRealLit($1); }
               ;
 
-var_ref       : VARIABLE[name]
+var_ref       : VARIABLE
                 {
-                  Symbol* symbol = getSymbol(&table, $name);
+                  char* name = $1;
+
+                  Symbol* symbol = getSymbol(&table, name);
                   if(!symbol)
                   {
-                    errorUndeclared($name);
+                    errorUndeclared(name);
                     YYERROR;
 
                   }
@@ -243,18 +237,21 @@ var_ref       : VARIABLE[name]
                   $$ = ast;
 
                 }
-              | VARIABLE[name] LBRACKET expr[cond] RBRACKET
+              | VARIABLE LBRACKET expr RBRACKET
                 {
-                  Symbol* symbol = getSymbol(&table, $name);
+                  char* name = $1;
+                  AST* cond = $3;
+
+                  Symbol* symbol = getSymbol(&table, name);
                   if(!symbol)
                   {
-                    errorUndeclared($name);
+                    errorUndeclared(name);
                     YYERROR;
 
                   }
 
                   AST* ast = makeReference(symbol);
-                  ast->cond = $cond;
+                  ast->cond = cond;
 
                   $$ = ast;
 
@@ -262,129 +259,126 @@ var_ref       : VARIABLE[name]
               ;
 
 //statements
-stmnt_list    : stmnt_item[ast] SEMI stmnt_list[next]
+stmnt_list    : stmnt_item SEMI stmnt_list
                 {
-                  $ast->next = $next;
-                  $$ = $ast;
+                  $1->next = $3;
+                  $$ = $1;
 
                 }
-              | stmnt_item[ast] SEMI { $$ = $ast; }
+              | stmnt_item SEMI { $$ = $1; }
               ;
 
-stmnt_item    : assignment[ast] { $$ = $ast; }
-              | print[ast] { $$ = $ast; }
-              | read[ast] { $$ = $ast; }
-              | conditional[ast] { $$ = $ast; }
-              | counting[ast] { $$ = $ast; }
-              | while[ast] { $$ = $ast; }
-              | exit[ast] { $$ = $ast; }
+stmnt_item    : assignment { $$ = $1; }
+              | print { $$ = $1; }
+              | read { $$ = $1; }
+              | conditional { $$ = $1; }
+              | counting { $$ = $1; }
+              | while { $$ = $1; }
+              | exit { $$ = $1; }
               ;
 
-assignment    : var_ref[left] ASSIGN expr[right]
+assignment    : var_ref ASSIGN expr
                 {
                   AST* ast = makeAST(ASSIGN);
-                  ast->left = $left;
-                  ast->right = $right;
+                  ast->left = $1;
+                  ast->right = $3;
                   $$ = ast;
 
                 }
               ;
 
-print         : PRINT print_list[left]
+print         : PRINT print_list
                 {
                   AST* ast = makeAST(PRINT);
-                  ast->left = $left;
+                  ast->left = $2;
                   $$ = ast;
 
                 }
               ;
 
-print_list    : print_item[ast] COMMA print_list[next]
+print_list    : print_item COMMA print_list
                 {
-                  $ast->next = $next;
-                  $$ = $ast;
+                  $1->next = $3;
+                  $$ = $1;
 
                 }
-              | print_item[ast] { $$ = $ast; }
+              | print_item { $$ = $1; }
               ;
 
-print_item    : expr[ast] { $$ = $ast; }
-              | STRINGLIT[str] { $$ = makeStringLit($str); }
+print_item    : expr { $$ = $1; }
+              | STRINGLIT { $$ = makeStringLit($1); }
               | BANG { $$ = makeAST(BANG); }
               ;
 
-read          : READ var_ref[left]
+read          : READ var_ref
                 {
                   AST* ast = makeAST(READ);
-                  ast->left = $left;
+                  ast->left = $2;
                   $$ = ast;
 
                 }
               ;
 
-conditional   : IF expr[cond] SEMI stmnt_list[left] END IF
+conditional   : IF expr SEMI stmnt_list END IF
                 {
                   AST* ast = makeAST(IF);
-                  ast->cond = $cond;
-                  ast->left = $left;
+                  ast->cond = $2;
+                  ast->left = $4;
                   $$ = ast;
 
                 }
-              | IF expr[cond] SEMI stmnt_list[left] ELSE SEMI stmnt_list[right] END IF
+              | IF expr SEMI stmnt_list ELSE SEMI stmnt_list END IF
                 {
                   AST* ast = makeAST(ELSE);
-                  ast->cond = $cond;
-                  ast->left = $left;
-                  ast->right = $right;
+                  ast->cond = $2;
+                  ast->left = $4;
+                  ast->right = $7;
                   $$ = ast;
 
                 }
               ;
 
-counting      : COUNTING var_ref[left]
+counting      : COUNTING var_ref bounds SEMI stmnt_list END COUNTING
                 {
-                  if($left->symbol->type == REAL_TYPE)
+                  if($2->symbol->type == REAL_TYPE)
                   {
-                    errorMustCountingInt($left->symbol->name);
+                    errorMustCountingInt($2->symbol->name);
                     YYERROR;
 
                   }
 
-                }
-                bounds[cond] SEMI stmnt_list[right] END COUNTING
-                {
                   AST* ast = makeAST(COUNTING);
-                  ast->cond = $cond;
-                  ast->left = $left;
-                  ast->right = $right;
+                  ast->cond = $3;
+                  ast->left = $2;
+                  ast->right = $5;
                   $$ = ast;
 
                 }
               ;
 
-bounds        : UPWARD expr[left] TO expr[right]
+bounds        : UPWARD expr TO expr
                 {
                   AST* ast = makeAST(UPWARD);
-                  ast->left = $left;
-                  ast->right = $right;
+                  ast->left = $2;
+                  ast->right = $4;
                   $$ = ast;
 
                 }
-              | DOWNWARD expr[left] TO expr[right]
+              | DOWNWARD expr TO expr
                 {
                   AST* ast = makeAST(DOWNWARD);
-                  ast->left = $left;
-                  ast->right = $right;
+                  ast->left = $2;
+                  ast->right = $4;
                   $$ = ast;
 
                 }
               ;
 
-while         : WHILE expr[cond] SEMI stmnt_list[left] END WHILE
+while         : WHILE expr SEMI stmnt_list END WHILE
                 {
                   AST* ast = makeAST(WHILE);
-                  ast->cond = $cond;
-                  ast->left = $left;
+                  ast->cond = $2;
+                  ast->left = $4;
                   $$ = ast;
 
                 }
