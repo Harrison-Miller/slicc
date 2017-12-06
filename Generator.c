@@ -108,17 +108,13 @@ int generateExpression(AST* ast)
       if(type == INTLIT)
       {
         ADD_CODE("LLI %d", 1);
-        ADD_SCODE("GEI");
-        ADD_CODE("LLI %d", 1);
-        ADD_SCODE("SBI");
+        ADD_SCODE("EQI");
 
       }
       else
       {
         ADD_CODE("LLF %f", 1.0f);
-        ADD_SCODE("GEF");
-        ADD_CODE("LLF %f", 1.0f);
-        ADD_SCODE("SBF");
+        ADD_SCODE("EQF");
 
       }
 
@@ -176,14 +172,42 @@ int generateExpression(AST* ast)
     {
       switch(ast->type)
       {
-        case EQ:  ADD_SCODE("EQF"); break;
-        case NEQ: ADD_SCODE("NEF"); break;
-        case LT:  ADD_SCODE("LTF"); break;
-        case GT:  ADD_SCODE("GTF"); break;
-        case LTE: ADD_SCODE("LEF"); break;
-        case GTE: ADD_SCODE("GEF"); break;
-        case OR:  ADD_SCODE("ADF"); break;
-        case AND: ADD_SCODE("MLF"); break;
+        case EQ:
+          ADD_SCODE("EQF");
+          isReal = 0;
+          break;
+        case NEQ:
+          ADD_SCODE("NEF");
+          isReal = 0;
+          break;
+        case LT:
+          ADD_SCODE("LTF");
+          isReal = 0;
+          break;
+        case GT:
+          ADD_SCODE("GTF");
+          isReal = 0;
+          break;
+        case LTE:
+          ADD_SCODE("LEF");
+          isReal = 0;
+          break;
+        case GTE:
+          ADD_SCODE("GEF");
+          isReal = 0;
+          break;
+        case OR:
+          ADD_SCODE("ADF");
+          ADD_CODE("LLF %f", 0.0f);
+          ADD_SCODE("NEF");
+          isReal = 0;
+          break;
+        case AND:
+          ADD_SCODE("MLF");
+          ADD_CODE("LLF %f", 0.0f);
+          ADD_SCODE("NEF");
+          isReal = 0;
+          break;
         case ADD: ADD_SCODE("ADF"); break;
         case SUB: ADD_SCODE("SBF"); break;
         case MUL: ADD_SCODE("MLF"); break;
@@ -316,7 +340,9 @@ void generateStatement(AST* ast)
     int type = generateExpression(ast->cond);
     if(type == REALLIT)
     {
-      ADD_SCODE("FTI");
+      ADD_CODE("LLF %f", 0.0f);
+      ADD_SCODE("NEF");
+
     }
 
     int pos = code.size;
@@ -332,7 +358,8 @@ void generateStatement(AST* ast)
     int type = generateExpression(ast->cond);
     if(type == REALLIT)
     {
-      ADD_SCODE("FTI");
+      ADD_CODE("LLF %f, 0.0f);
+      ADD_SCODE("NEF");
 
     }
 
@@ -363,7 +390,8 @@ void generateStatement(AST* ast)
 
     if(type == REALLIT)
     {
-      ADD_SCODE("FTI");
+      ADD_CODE("LLF %f, 0.0f);
+      ADD_SCODE("NEF");
 
     }
 
